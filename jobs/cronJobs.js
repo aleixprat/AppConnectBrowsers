@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { getJobs } = require('../models/peticiones.model');
+const { getJobs,getJobsByUrlTalla } = require('../models/peticiones.model');
 
 const { Builder, By, Key } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
@@ -29,7 +29,6 @@ cron.schedule('*/1 * * * *', async () => {
         const arrayEncontrados = [];
         for (let peticion of peticiones) {
             const resultadoPeticion=  await verificarDisponibilidad(peticion); //Devolvera un null si no encuentra nada
-            console.log(resultadoPeticion);
             if (resultadoPeticion) {
                 arrayEncontrados.push(resultadoPeticion);
             }
@@ -106,7 +105,7 @@ const verificarDisponibilidad = async (peticion) => {
 
            // Construir el objeto de respuesta
            const mensaje = 'La talla está disponible';
-           return { id: peticion.id, talla: tallaElegida, url: url, mensaje: mensaje };
+           return peticion;
        } catch (e) {
            return null; // Error al cargar la página, devolver null
        } finally {
@@ -121,8 +120,13 @@ const verificarDisponibilidad = async (peticion) => {
 
 
 
-const enviarCorreoElectronicoSiHayCambios = (nuevoContenido) => {
+const enviarCorreoElectronicoSiHayCambios = async (peticionEncontrada) => {
     // Implementa la lógica para enviar un correo electrónico si hay cambios
     // Puedes utilizar nodemailer u otra biblioteca para enviar correos electrónicos
-    console.log('Contenido actualizado:', nuevoContenido);
+    const [peticiones] = await getJobsByUrlTalla(peticionEncontrada.url,peticionEncontrada.talla);
+    console.log(`Peticiones Encontradas con la url: ${peticionEncontrada.url} y la talla ${peticionEncontrada.talla}.`);
+    if (!peticiones) {
+        return;
+    }
+    console.log(`Array con las peticiones de las distintas personas ${peticiones}`);
 };

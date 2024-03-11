@@ -6,6 +6,11 @@ const getById = (peticionId) => {
     return db.query('select * from peticiones where id = ? ', [peticionId]);
 }
 
+const getJobsByUrlTalla = (url, talla) => {
+    return db.query('select * from peticiones where url = ? and talla = ?', [url, talla]);
+}
+
+
 const getJobs = () => {
     return db.query('select talla, url from peticiones group by url, talla order by url');
 }
@@ -29,5 +34,5 @@ const deleteById = (producoId) => {
 }
 
 module.exports = {
-    getAll, create, getById, getJobs, update, deleteById
+    getAll, create, getById, getJobsByUrlTalla, getJobs, update, deleteById
 }
