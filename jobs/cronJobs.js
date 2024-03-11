@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { getJobs,getJobsByUrlTalla } = require('../models/peticiones.model');
+const { getAllJobs,getJobsByUrlTalla,updateExisteStock } = require('../models/peticiones.model');
 
 const { Builder, By, Key } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
@@ -15,32 +15,30 @@ const { Options } = require('selenium-webdriver/chrome');
 cron.schedule('*/1 * * * *', async () => {
     console.log('pasando');
     try {
-        // Realizar la petición a la URL almacenada en la base de datos y verificar si hay cambios
-        const [peticiones] = await getJobs();
-
-        
+        //Consultamos si hay peticiones a buscar agrupando entre ellas para optimizar resultados
+        const [peticiones] = await getAllJobs();
         if (!peticiones || peticiones.length == 0) {
             console.log('No hay peticiones actualmente');
             return;
         }
         
-        //Depurar a partir de aqui
-        // Si hay peticiones, iterar sobre ellas y ejecutar ajaxHola() para cada una
-        const arrayEncontrados = [];
+        //Si hay peticiones, iterar sobre ellas y buscar si existe la talla en la url solicitada
+        const arrayResultados = [];
         for (let peticion of peticiones) {
-            const resultadoPeticion=  await verificarDisponibilidad(peticion); //Devolvera un null si no encuentra nada
-            if (resultadoPeticion) {
-                arrayEncontrados.push(resultadoPeticion);
-            }
-            
-        }
-        //Recorremos los que se han encontrado
-        if (arrayEncontrados.length > 0) {
-            for (let peticionEncontrada of arrayEncontrados) {
-                enviarCorreoElectronicoSiHayCambios(peticionEncontrada);
-                //Insert modificando a encontrado
+            const resultadoPeticion = await verificarDisponibilidad(peticion);
+            if (resultadoPeticion!= null) {
+                let resultadoToArray = {peticion: peticion,resultadoPeticion: resultadoPeticion};
+                arrayResultados.push(resultadoToArray)
             }
         }
+        
+        //Recorremos los resultados y los actualizamos y enviamos si es necesario
+        if (arrayResultados.length > 0) {
+            for (let itemResultados of arrayResultados) {
+                enviarActualizarPeticionUsuarios(itemResultados.peticion, itemResultados.resultadoPeticion);
+            }
+        }
+        
     } catch (error) {
         console.error('Error al ejecutar la tarea programada:', error);
     }
@@ -53,6 +51,11 @@ cron.schedule('*/1 * * * *', async () => {
 * @returns {Object|null} - Objeto con el ID, talla, URL y mensaje de disponibilidad, o null si la talla no está disponible.
 */
 const verificarDisponibilidad = async (peticion) => {
+   const resultados = {
+    hayStock: false,
+    sinStock: false,
+    noExiste: false,
+   }
    try {
        // Recuperamos los parámetros de la petición
        const tallaElegida = peticion.talla ? peticion.talla.toUpperCase() : null;
@@ -99,13 +102,15 @@ const verificarDisponibilidad = async (peticion) => {
                }
            }
 
-           if (!tallaEncontrada || !stockDisponible) {
-               return null; // La talla no está disponible, devolver null
+           if (!tallaEncontrada && !stockDisponible) {
+                resultados.noExiste = true; 
+           } else if (tallaEncontrada && !stockDisponible){
+                resultados.sinStock = true;
+           } else {
+                resultados.hayStock = true;
            }
+           return resultados;
 
-           // Construir el objeto de respuesta
-           const mensaje = 'La talla está disponible';
-           return peticion;
        } catch (e) {
            return null; // Error al cargar la página, devolver null
        } finally {
@@ -119,14 +124,45 @@ const verificarDisponibilidad = async (peticion) => {
 };
 
 
+/**
+* Función para actualizar los registros de peticiones  e enviar un correo al usuario si hay stock
+* @param {Object} peticion - Objeto que contiene la información de la petición, incluyendo el ID, talla y URL.
+* @returns  - Void.
+*/
+const enviarActualizarPeticionUsuarios = async (peticionEncontrada,resultadoPeticion) => {
+    let is_existe_value = 0;
+    let is_stock_value = 0;
+    let message = "";
 
-const enviarCorreoElectronicoSiHayCambios = async (peticionEncontrada) => {
-    // Implementa la lógica para enviar un correo electrónico si hay cambios
-    // Puedes utilizar nodemailer u otra biblioteca para enviar correos electrónicos
-    const [peticiones] = await getJobsByUrlTalla(peticionEncontrada.url,peticionEncontrada.talla);
-    console.log(`Peticiones Encontradas con la url: ${peticionEncontrada.url} y la talla ${peticionEncontrada.talla}.`);
-    if (!peticiones) {
+    //Actualizamos campos a procesar en la query y en el update
+    if (resultadoPeticion.hayStock) {
+        is_existe_value = 1;
+        is_stock_value = 1;
+        message = "Hay Stock. ";
+    } else if (resultadoPeticion.sinStock) {
+        is_existe_value = 1;
+        is_stock_value = 0;
+        message = "No hay Stock. ";
+    } else {
+        is_existe_value = 0;
+        is_stock_value = 0;
+        message = "No existe. ";
+    }
+
+    //Se buscan los registros a actualizar
+    const [consultaPeticiones] = 
+        await getJobsByUrlTalla(peticionEncontrada.url, peticionEncontrada.talla,{ is_existe: is_existe_value, is_stock: is_stock_value });
+
+    //Si no hay nada que actualizar no se procesan registros
+    if (!consultaPeticiones || consultaPeticiones.length === 0) {
+        console.log(`No hay nada que actualziar con la url ${peticionEncontrada.url} y la talla ${peticionEncontrada.talla}`);
         return;
     }
-    console.log(`Array con las peticiones de las distintas personas ${peticiones}`);
+    
+    // Iteramos sobre los resultados devueltos por la consulta
+    for (let peticion of consultaPeticiones) {
+        //Se actualiza el registro y envia un correo electrónico
+        await updateExisteStock(peticion.id, { is_existe: is_existe_value, is_stock: is_stock_value });
+        console.log(`${message} Se ha actualizado la petición ${peticion.id}`);
+    }
 };
