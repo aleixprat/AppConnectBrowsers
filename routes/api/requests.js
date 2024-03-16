@@ -10,14 +10,15 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.get('/requests', async (req, res) => {
+router.get('/:requestId', async (req, res) => {
+    const { requestId } = req.params;
     try {
-        const [requests] = await getAll();
-        res.json(requests);
+        const [request] = await getById(requestId);
+        res.json(request[0]);
     } catch (error) {
-        res.status(500).json({ fatal: error.message });
+        res.status(500).json({ fatal: error.message })
     }
-})
+});
 
 router.post('/', async (req, res) => {
     try {
@@ -28,6 +29,7 @@ router.post('/', async (req, res) => {
         res.status(500).json({ fatal: error.message })
     }
 });
+
 
 router.put('/:requestId', async (req, res) => {
     const { requestId } = req.params;

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { getById } = require('../models/usuario.model');
+const { getById } = require('../models/user.model');
 
 const checkToken = async (req, res, next) => {
     // ¿Viene incluida la cabecera de Authorization?
@@ -18,7 +18,7 @@ const checkToken = async (req, res, next) => {
         return res.json({ fatal: error.message });
     }
 
-    // Recupero los datos del usuario logado
+    // Recupero los datos del user logado
     // obj dispone de las siguientes claves: user_id, user_role, exp
     const [users] = await getById(obj.user_id);
     req.user = users[0];

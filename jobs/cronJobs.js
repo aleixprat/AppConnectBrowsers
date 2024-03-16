@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { getAllJobs,getJobsByUrlTalla,updateExisteStock } = require('../models/peticiones.model');
+const { getAllJobs,getJobsByUrlSize,updateExisteStock } = require('../models/request.model');
 
 const { Builder, By, Key } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
@@ -7,27 +7,27 @@ const { Options } = require('selenium-webdriver/chrome');
 
 /**
  * Método programado que verifica la disponibilidad de productos en las URL almacenadas en la base de datos.
- * - Recupera las peticiones almacenadas en la base de datos.
- * - Para cada petición, busca la disponibilidad de la talla del producto en la URL correspondiente.
- * - Si encuentra el producto y la talla está disponible, envía un correo electrónico al usuario y actualiza la base de datos.
- * - Si no hay peticiones o si ocurre algún error, se registra en la consola.
+ * - Recupera las requests almacenadas en la base de datos.
+ * - Para cada petición, busca la disponibilidad de la size del producto en la URL correspondiente.
+ * - Si encuentra el producto y la size está disponible, envía un correo electrónico al user y actualiza la base de datos.
+ * - Si no hay requests o si ocurre algún error, se registra en la consola.
  */
 cron.schedule('*/1 * * * *', async () => {
     console.log('pasando');
     try {
-        //Consultamos si hay peticiones a buscar agrupando entre ellas para optimizar resultados
-        const [peticiones] = await getAllJobs();
-        if (!peticiones || peticiones.length == 0) {
-            console.log('No hay peticiones actualmente');
+        //Consultamos si hay requests a buscar agrupando entre ellas para optimizar resultados
+        const [requests] = await getAllJobs();
+        if (!requests || requests.length == 0) {
+            console.log('No hay requests actualmente');
             return;
         }
         
-        //Si hay peticiones, iterar sobre ellas y buscar si existe la talla en la url solicitada
+        //Si hay requests, iterar sobre ellas y buscar si existe la size en la url solicitada
         const arrayResultados = [];
-        for (let peticion of peticiones) {
-            const resultadoPeticion = await verificarDisponibilidad(peticion);
-            if (resultadoPeticion!= null) {
-                let resultadoToArray = {peticion: peticion,resultadoPeticion: resultadoPeticion};
+        for (let request of requests) {
+            const resultadoRequest = await verificarDisponibilidad(request);
+            if (resultadoRequest!= null) {
+                let resultadoToArray = {request: request,resultadoRequest: resultadoRequest};
                 arrayResultados.push(resultadoToArray)
             }
         }
@@ -35,7 +35,7 @@ cron.schedule('*/1 * * * *', async () => {
         //Recorremos los resultados y los actualizamos y enviamos si es necesario
         if (arrayResultados.length > 0) {
             for (let itemResultados of arrayResultados) {
-                enviarActualizarPeticionUsuarios(itemResultados.peticion, itemResultados.resultadoPeticion);
+                enviarActualizarRequestUsers(itemResultados.request, itemResultados.resultadoRequest);
             }
         }
         
@@ -46,11 +46,11 @@ cron.schedule('*/1 * * * *', async () => {
 
 
 /**
-* Función para verificar la disponibilidad de una talla en una URL específica.
-* @param {Object} peticion - Objeto que contiene la información de la petición, incluyendo el ID, talla y URL.
-* @returns {Object|null} - Objeto con el ID, talla, URL y mensaje de disponibilidad, o null si la talla no está disponible.
+* Función para verificar la disponibilidad de una size en una URL específica.
+* @param {Object} request - Objeto que contiene la información de la petición, incluyendo el ID, size y URL.
+* @returns {Object|null} - Objeto con el ID, size, URL y mensaje de disponibilidad, o null si la size no está disponible.
 */
-const verificarDisponibilidad = async (peticion) => {
+const verificarDisponibilidad = async (request) => {
    const resultados = {
     hayStock: false,
     sinStock: false,
@@ -58,11 +58,11 @@ const verificarDisponibilidad = async (peticion) => {
    }
    try {
        // Recuperamos los parámetros de la petición
-       const tallaElegida = peticion.talla ? peticion.talla.toUpperCase() : null;
-       const url = peticion.url ? peticion.url : null;
+       const sizeElegida = request.size ? request.size.toUpperCase() : null;
+       const url = request.url ? request.url : null;
         
        // Verificar si los parámetros existen
-       if (!tallaElegida || !url) {
+       if (!sizeElegida || !url) {
            return null; 'Faltan parámetros en la petición'
        }
        
@@ -81,8 +81,8 @@ const verificarDisponibilidad = async (peticion) => {
            const ulElement = await driver.findElement(By.css('ul[id*="product-size-selector"]'));
            const liElements = await ulElement.findElements(By.tagName('li'));
            
-           // Obtener la clase de la talla para determinar si está disponible
-           let tallaEncontrada = false;
+           // Obtener la clase de la size para determinar si está disponible
+           let sizeEncontrada = false;
            let stockDisponible = false;
            for (let i = 0; i < liElements.length; i++) {
                const li = liElements[i];
@@ -92,8 +92,8 @@ const verificarDisponibilidad = async (peticion) => {
                }
                
                const productSizeLabelValue = await productSizeInfoMainLabel.getText();
-               if (productSizeLabelValue.toUpperCase() === tallaElegida) {
-                   tallaEncontrada = true;
+               if (productSizeLabelValue.toUpperCase() === sizeElegida) {
+                   sizeEncontrada = true;
                    const dataQAAction = await li.getAttribute('data-qa-action');
                    if (dataQAAction === 'size-low-on-stock' || dataQAAction === 'size-in-stock') {
                        stockDisponible = true;
@@ -102,9 +102,9 @@ const verificarDisponibilidad = async (peticion) => {
                }
            }
 
-           if (!tallaEncontrada && !stockDisponible) {
+           if (!sizeEncontrada && !stockDisponible) {
                 resultados.noExiste = true; 
-           } else if (tallaEncontrada && !stockDisponible){
+           } else if (sizeEncontrada && !stockDisponible){
                 resultados.sinStock = true;
            } else {
                 resultados.hayStock = true;
@@ -125,21 +125,21 @@ const verificarDisponibilidad = async (peticion) => {
 
 
 /**
-* Función para actualizar los registros de peticiones  e enviar un correo al usuario si hay stock
-* @param {Object} peticion - Objeto que contiene la información de la petición, incluyendo el ID, talla y URL.
+* Función para actualizar los registros de requests  e enviar un correo al user si hay stock
+* @param {Object} request - Objeto que contiene la información de la petición, incluyendo el ID, size y URL.
 * @returns  - Void.
 */
-const enviarActualizarPeticionUsuarios = async (peticionEncontrada,resultadoPeticion) => {
+const enviarActualizarRequestUsers = async (requestEncontrada,resultadoRequest) => {
     let is_existe_value = 0;
     let is_stock_value = 0;
     let message = "";
 
     //Actualizamos campos a procesar en la query y en el update
-    if (resultadoPeticion.hayStock) {
+    if (resultadoRequest.hayStock) {
         is_existe_value = 1;
         is_stock_value = 1;
         message = "Hay Stock. ";
-    } else if (resultadoPeticion.sinStock) {
+    } else if (resultadoRequest.sinStock) {
         is_existe_value = 1;
         is_stock_value = 0;
         message = "No hay Stock. ";
@@ -150,19 +150,19 @@ const enviarActualizarPeticionUsuarios = async (peticionEncontrada,resultadoPeti
     }
 
     //Se buscan los registros a actualizar
-    const [consultaPeticiones] = 
-        await getJobsByUrlTalla(peticionEncontrada.url, peticionEncontrada.talla,{ is_existe: is_existe_value, is_stock: is_stock_value });
+    const [consultaRequests] = 
+        await getJobsByUrlSize(requestEncontrada.url, requestEncontrada.size,{ is_existe: is_existe_value, is_stock: is_stock_value });
 
     //Si no hay nada que actualizar no se procesan registros
-    if (!consultaPeticiones || consultaPeticiones.length === 0) {
-        console.log(`No hay nada que actualziar con la url ${peticionEncontrada.url} y la talla ${peticionEncontrada.talla}`);
+    if (!consultaRequests || consultaRequests.length === 0) {
+        console.log(`No hay nada que actualziar con la url ${requestEncontrada.url} y la size ${requestEncontrada.size}`);
         return;
     }
     
     // Iteramos sobre los resultados devueltos por la consulta
-    for (let peticion of consultaPeticiones) {
+    for (let request of consultaRequests) {
         //Se actualiza el registro y envia un correo electrónico
-        await updateExisteStock(peticion.id, { is_existe: is_existe_value, is_stock: is_stock_value });
-        console.log(`${message} Se ha actualizado la petición ${peticion.id}`);
+        await updateExisteStock(request.id, { is_existe: is_existe_value, is_stock: is_stock_value });
+        console.log(`${message} Se ha actualizado la petición ${request.id}`);
     }
 };

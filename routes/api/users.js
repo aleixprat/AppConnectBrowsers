@@ -1,13 +1,25 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 
-const { create, getByEmail } = require('../../models/user.model');
+const { create, update, getByEmail, getById } = require('../../models/user.model');
 const { createToken } = require('../../utils/helpers');
 const { checkToken } = require('../../utils/middlewares');
 
 router.get('/profile', checkToken, (req, res) => {
     delete req.user.password;
     res.json(req.user);
+});
+
+router.put('/:userId',checkToken, async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        await update(userId, req.body);
+        const [getByIdResponse] = await getById(userId);
+        res.json(getByIdResponse[0]);
+    } catch (error) {
+        res.status(500).json({ fatal: error.message })
+    }
 });
 
 router.post('/register', async (req, res) => {
@@ -22,6 +34,8 @@ router.post('/register', async (req, res) => {
         res.json({ fatal: error.message });
     }
 });
+
+
 
 router.post('/login', async (req, res) => {
     // ¿Existe el email en la base de datos?

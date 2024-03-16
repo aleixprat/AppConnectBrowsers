@@ -13,17 +13,17 @@ const getJobsByUrlSize = (url, size, { is_exist, is_stock }) => {
     return db.query('select * from request where url = ? and size = ? and (is_exist != ? or is_stock != ?)', [url, size,is_exist, is_stock]);
 }
 
-const create = ({ name, description, url, size, user_id }) => {
+const create = ({ name, description, url, size, user_id, company_id }) => {
     return db.query(
-        'insert into request (name, description, url, size, user_id) values (?, ?, ?, ?, ?)',
-        [name, description, url, size, user_id]
+        'insert into request (name, description, url, size, user_id, company_id) values (?, ?, ?, ?, ?, ?)',
+        [name, description, url, size, user_id,company_id]
     );
 }
 
-const update = (requestId, { name, description, url, size, user_id }) => {
+const update = (requestId, { name, description, url, size, user_id, company_id }) => {
     return db.query(
-        'update request set name = ?, description = ?, url = ?, size = ?, user_id = ? where id = ?',
-        [name, description, url, size, user_id, requestId]
+        'update request set name = ?, description = ?, url = ?, size = ?, user_id = ?, company_id = ? where id = ?',
+        [name, description, url, size, user_id, requestId, company_id]
     )
 }
 
