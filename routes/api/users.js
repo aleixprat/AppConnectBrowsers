@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 
-const { create, getByEmail } = require('../../models/usuario.model');
+const { create, getByEmail } = require('../../models/user.model');
 const { createToken } = require('../../utils/helpers');
 const { checkToken } = require('../../utils/middlewares');
 
@@ -31,7 +31,7 @@ router.post('/login', async (req, res) => {
         return res.json({ fatal: 'Error en email y/o contraseña' });
     }
 
-    // Recuperamos el usuario
+    // Recuperamos el user
     const user = users[0];
 
     // ¿Coinciden las password?
