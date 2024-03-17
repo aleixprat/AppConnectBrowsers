@@ -2,7 +2,7 @@ const router = require('express').Router();
 
 const { checkToken } = require('../utils/middlewares');
 
-router.use('/users', require('./api/users'));
+router.use('/user', require('./api/users'));
 
 router.use('/request',
     checkToken,

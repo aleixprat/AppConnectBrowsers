@@ -1,9 +1,18 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 
-const { create, update, getByEmail, getById } = require('../../models/user.model');
+const { create, update,getAll, getByEmail, getById } = require('../../models/user.model');
 const { createToken } = require('../../utils/helpers');
-const { checkToken } = require('../../utils/middlewares');
+const { checkToken, checkAdmin } = require('../../utils/middlewares');
+
+router.get('/', checkToken, checkAdmin, async (req, res) => {
+    try {
+        const [users] = await getAll();
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ fatal: error.message });
+    }
+});
 
 router.get('/profile', checkToken, (req, res) => {
     delete req.user.password;

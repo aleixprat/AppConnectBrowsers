@@ -12,6 +12,11 @@ const update = (id,{ username, email, telephone, name_img, img }) => {
     );
 }
 
+const getAll = () => {
+    return db.query(
+        'select * from user'
+    )
+}
 
 const getByEmail = (email) => {
     return db.query(
@@ -34,5 +39,5 @@ const getById = (userId) => {
 }
 
 module.exports = {
-    create, update, getByEmail, getById, getByTelephone
+    create, update, getAll, getByEmail, getById, getByTelephone
 }
