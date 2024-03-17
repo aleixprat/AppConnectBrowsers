@@ -23,7 +23,7 @@ const create = ({ name, description, url, size, user_id, company_id }) => {
 const update = (requestId, { name, description, url, size, user_id, company_id }) => {
     return db.query(
         'update request set name = ?, description = ?, url = ?, size = ?, user_id = ?, company_id = ? where id = ?',
-        [name, description, url, size, user_id, requestId, company_id]
+        [name, description, url, size, user_id, company_id, requestId]
     )
 }
 

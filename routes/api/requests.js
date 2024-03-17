@@ -33,9 +33,8 @@ router.post('/', async (req, res) => {
 
 router.put('/:requestId', async (req, res) => {
     const { requestId } = req.params;
-
     try {
-        await update(requestId, req.body);
+        const result = await update(requestId, req.body);
         const [request] = await getById(requestId);
         res.json(request[0]);
     } catch (error) {

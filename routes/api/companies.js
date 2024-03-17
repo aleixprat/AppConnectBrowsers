@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { getAll, create, getById, update, deleteById } = require('../../models/company.model');
+const { checkAdmin } = require('../../utils/middlewares');
 
 router.get('/', async (req, res) => {
     try {
@@ -20,7 +21,7 @@ router.get('/:companyId', async (req, res) => {
     }
 })
 
-router.post('/', async (req, res) => {
+router.post('/',checkAdmin, async (req, res) => {
     try {
         const [result] = await create(req.body);
         const [newcompany] = await getById(result.insertId);
@@ -30,7 +31,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-router.put('/:companyId', async (req, res) => {
+router.put('/:companyId', checkAdmin, async (req, res) => {
     const { companyId } = req.params;
 
     try {
@@ -42,7 +43,7 @@ router.put('/:companyId', async (req, res) => {
     }
 });
 
-router.delete('/:companyId', async (req, res) => {
+router.delete('/:companyId', checkAdmin, async (req, res) => {
     const { companyId } = req.params;
 
     try {
