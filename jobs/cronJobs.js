@@ -14,6 +14,7 @@ const { Options } = require('selenium-webdriver/chrome');
  */
 cron.schedule('*/1 * * * *', async () => {
     console.log('pasando');
+    return;
     try {
         //Consultamos si hay requests a buscar agrupando entre ellas para optimizar resultados
         const [requests] = await getAllJobs();
