@@ -37,7 +37,10 @@ const getById = (userId) => {
         'select * from user where id = ?', [userId]
     )
 }
+const deleteById = (userId) => {
+    return db.query('delete from user where id = ?', [userId]);
+}
 
 module.exports = {
-    create, update, getAll, getByEmail, getById, getByTelephone
+    create, update, getAll, getByEmail, getById, getByTelephone,deleteById
 }

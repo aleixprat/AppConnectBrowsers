@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 
-const { create, update,getAll, getByEmail, getById } = require('../../models/user.model');
+const { create, update,getAll, getByEmail, getById,deleteById } = require('../../models/user.model');
 const { createToken } = require('../../utils/helpers');
 const { checkToken, checkAdmin } = require('../../utils/middlewares');
 
@@ -17,6 +17,23 @@ router.get('/', checkToken, checkAdmin, async (req, res) => {
 router.get('/profile', checkToken, (req, res) => {
     delete req.user.password;
     res.json(req.user);
+});
+
+
+router.get('/:userId',checkToken,checkAdmin, async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const [user] = await getById(userId);
+        const imgBase64 = user[0].img ? user[0].img.toString('base64') : null;
+
+
+        delete user[0].password;
+        user[0].img = imgBase64;
+        
+        res.json(user[0]);
+    } catch (error) {
+        res.status(500).json({ fatal: error.message });
+    }
 });
 
 router.put('/:userId',checkToken, async (req, res) => {
@@ -44,6 +61,20 @@ router.post('/register', async (req, res) => {
     }
 });
 
+//Creación para usar el admin
+router.post('/',checkToken,checkAdmin, async (req, res) => {
+
+    // Antes de insertar encriptamos la password
+    req.body.password = bcrypt.hashSync(req.body.password, 8);
+
+    try {
+        const [result] = await create(req.body);
+        const [newUser] = await getById(result.insertId);
+        res.json(newUser[0]);
+    } catch (error) {
+        res.json({ fatal: error.message });
+    }
+});
 
 
 router.post('/login', async (req, res) => {
@@ -68,6 +99,18 @@ router.post('/login', async (req, res) => {
         token: createToken(user)
     });
 
+});
+
+router.delete('/:userId',checkToken, checkAdmin, async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const [user] = await getById(userId);
+        await deleteById(userId);
+        res.json(user[0]);
+    } catch (error) {
+        res.status(500).json({ fatal: error.message })
+    }
 });
 
 module.exports = router;
